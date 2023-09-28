@@ -5,7 +5,6 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
 class Solution2Test extends AsyncWordSpec with Matchers with AsyncIOSpec{
-  import Solution2._
   import Solution2.Shape._
   import Solution2.Outcome._
 

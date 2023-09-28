@@ -26,7 +26,9 @@ object Solution2 extends IOApp {
   }
   object Match {
     def fromEncrypted(encrypted: String): Match = {
-      val Array(they, me) = encrypted.split(" ")
+      val players = encrypted.split(" ")
+      require(players.size == 2)
+      val (they, me) = (players.head, players.last)
       Match(Shape.fromEncrypted(they), Shape.fromEncrypted(me))
     }
   }
@@ -56,8 +58,6 @@ object Solution2 extends IOApp {
     (Scissors, Paper) -> Victory
   )
 
-
-
   private def readInput(pathStr: String): fs2.Stream[IO, String] = {
     val path = Path.apply(pathStr)
     Files
@@ -69,6 +69,7 @@ object Solution2 extends IOApp {
 
   def process(input: fs2.Stream[IO, String]): IO[Int] =
     input
+      .filter(_.nonEmpty)
       .map(Match.fromEncrypted)
       .map(scoreMatch)
       .fold(0)(_ + _)
@@ -77,7 +78,7 @@ object Solution2 extends IOApp {
 
   def run(filepath: String): IO[Int] = {
     val input = readInput(filepath)
-    process(input)
+    process(input).flatTap(IO.println)
   }
 
   override def run(args: List[String]): IO[ExitCode] = {
