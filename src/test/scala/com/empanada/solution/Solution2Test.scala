@@ -11,7 +11,7 @@ class Solution2Test extends AsyncWordSpec with Matchers with AsyncIOSpec{
   "simple selection" in {
     val testExample = "./src/test/resources/input-2a.txt"
     Solution2.run(testExample)
-      .asserting(res => res shouldBe 15)
+      .asserting(res => res shouldBe 12)
   }
 
   "rock and paper" in {

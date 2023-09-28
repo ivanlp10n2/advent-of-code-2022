@@ -5,7 +5,9 @@ import fs2.io.file.{Files, Path}
 
 object Solution2 extends IOApp {
   sealed trait Scorable { def score: Int = scoringSystem(this) }
-  sealed trait Shape extends Scorable { def vs(hand: Shape): Outcome = outcomes(this, hand) }
+  sealed trait Shape extends Scorable {
+    def vs(hand: Shape): Outcome = outcomes(this, hand)
+  }
   sealed trait Outcome extends Scorable
   final case class Match(they: Shape, me: Shape) extends Scorable
   object Shape {
@@ -14,22 +16,41 @@ object Solution2 extends IOApp {
     final case object Scissors extends Shape
 
     def fromEncrypted(encrypted: String): Shape = encrypted match {
-      case "A" | "X" => Rock
-      case "B" | "Y" => Paper
-      case "C" | "Z" => Scissors
+      case "A" => Rock
+      case "B" => Paper
+      case "C" => Scissors
     }
+    def against(theirShape: Shape, expectedResult: String): Shape =
+      expectedResult match {
+        case "X" => lossesAgainst(theirShape)
+        case "Y" => theirShape // Draw
+        case "Z" => winsAgainst(theirShape)
+      }
+
+    private val lossesAgainst: Map[Shape, Shape] = Map(
+      Rock -> Scissors,
+      Paper -> Rock,
+      Scissors -> Paper
+    )
+    private val winsAgainst: Map[Shape, Shape] = Map(
+      Rock -> Paper,
+      Paper -> Scissors,
+      Scissors -> Rock
+    )
   }
   object Outcome {
     final case object Victory extends Outcome
     final case object Defeat extends Outcome
     final case object Draw extends Outcome
   }
-  object Match {
+  private object Match {
     def fromEncrypted(encrypted: String): Match = {
-      val players = encrypted.split(" ")
-      require(players.size == 2)
-      val (they, me) = (players.head, players.last)
-      Match(Shape.fromEncrypted(they), Shape.fromEncrypted(me))
+      val msg = encrypted.split(" ")
+      require(msg.size == 2)
+      val (they, expectedResult) = (msg.head, msg.last)
+      val theirShape = Shape.fromEncrypted(they)
+      val myShape = Shape.against(theirShape, expectedResult)
+      Match(theirShape, myShape)
     }
   }
   import Shape._
@@ -40,11 +61,10 @@ object Solution2 extends IOApp {
     Scissors -> 3,
     Victory -> 6,
     Draw -> 3,
-    Defeat -> 0,
+    Defeat -> 0
   )
 
-  private val scoreMatch: Match => Int = m =>
-    m.me.vs(m.they).score + m.me.score
+  private val scoreMatch: Match => Int = m => m.me.vs(m.they).score + m.me.score
 
   private val outcomes: Map[(Shape, Shape), Outcome] = Map(
     (Rock, Rock) -> Draw,
@@ -78,11 +98,13 @@ object Solution2 extends IOApp {
 
   def run(filepath: String): IO[Int] = {
     val input = readInput(filepath)
-    process(input).flatTap(IO.println)
+    process(input)
   }
 
   override def run(args: List[String]): IO[ExitCode] = {
     val filePath = "./src/main/resources/input-2.txt"
-    run(filePath).as(ExitCode.Success)
+    run(filePath)
+      .flatTap(IO.println)
+      .as(ExitCode.Success)
   }
 }
