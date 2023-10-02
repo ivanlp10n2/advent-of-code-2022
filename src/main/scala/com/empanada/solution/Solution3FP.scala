@@ -5,8 +5,6 @@ import cats.effect.{ExitCode, IO, IOApp}
 import fs2.Chunk
 import fs2.io.file.{Files, Path}
 
-import scala.util.Random
-
 object Solution3FP extends IOApp {
   final case class Rucksack private (items: List[Char]) {
     lazy val compartments: (List[Char], List[Char]) =
@@ -60,15 +58,6 @@ object Solution3FP extends IOApp {
     duplicatedTypes.map(Item.toPriority).sum
   }
 
-  private def getBadgePriority(elves: Chunk[Rucksack]): Int = {
-    val id = Random.nextInt(100)
-    Rucksack
-      .findDuplicates(elves.toList)
-      .tapEach(c => println(s"found char ${c} within id [$id]"))
-      .map(Item.toPriority)
-      .sum
-  }
-
   private def readInput(pathStr: String): fs2.Stream[IO, String] = {
     val path = Path.apply(pathStr)
     Files
@@ -93,10 +82,6 @@ object Solution3FP extends IOApp {
       .map(Rucksack.of)
       .chunkN(3, false)
 
-  private def sumBadgesPriority
-      : fs2.Stream[IO, Chunk[Rucksack]] => fs2.Stream[IO, Int] =
-    _.foldMap(getBadgePriority)
-
   def runPriorityTypesSum(filepath: String): IO[Int] = {
     readInput(filepath)
       .through(processPriorityTypes)
@@ -105,22 +90,30 @@ object Solution3FP extends IOApp {
   }
 
   def runPriorityBadgeSum(filepath: String): IO[Int] = {
-    val counterRef = IO.ref[Int](0)
+    val emptyCollection = IO.ref[List[List[Char]]](List.empty)
 
-    def print(ref: effect.Ref[IO, Int]): IO[Unit] =
-      ref.get.flatMap(n => IO.println(s"counter = $n"))
+    def sumAllPriorities(ref: effect.Ref[IO, List[List[Char]]]): IO[Int] =
+      ref.get.map {
+        _.map(_.toSet).flatten
+          .map(Item.toPriority)
+          .sum
+      }
 
-    counterRef.flatMap(counter =>
+    emptyCollection.flatMap(itemsCollection =>
       readInput(filepath)
-        .evalTap(_ => counter.update(_ + 1))
         .through(groupRucksack)
-        .through(sumBadgesPriority)
+        .through(findDuplicates)
+        .evalTap(duplicates => itemsCollection.update(c => duplicates :: c))
         .compile
-        .onlyOrError
-        .flatTap(_ => print(counter))
+        .drain
+        .flatMap(_ => sumAllPriorities(itemsCollection))
     )
 
   }
+
+  private def findDuplicates
+      : fs2.Stream[IO, Chunk[Rucksack]] => fs2.Stream[IO, List[Char]] =
+    _.map(chunk => Rucksack.findDuplicates(chunk.toList))
 
   override def run(args: List[String]): IO[ExitCode] = {
     val filePath = "./src/main/resources/input-3.txt"
