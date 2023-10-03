@@ -5,9 +5,11 @@ import fs2.io.file.{Files, Path}
 
 object Solution4 extends IOApp {
   object Sections {
-    final case class Sections(value: List[Int]){
-      def contains(setB: Sections): Boolean =
+    final case class Sections(value: List[Int]) {
+      def fullyContains(setB: Sections): Boolean =
         isContainedIn(setB, this)
+
+      def overlaps(setB: Sections): Boolean = isOverlapping(this, setB)
     }
 
     def containsOneOrAnother(one: Sections, other: Sections): Boolean =
@@ -31,6 +33,9 @@ object Solution4 extends IOApp {
     private def isContainedIn(s1: Sections, s2: Sections): Boolean =
       s1.value.forall(s => s2.value.contains(s))
 
+    private def isOverlapping(s1: Sections, s2: Sections): Boolean =
+      s1.value.exists(s => s2.value.contains(s))
+
   }
 
   def readInput(pathStr: String): fs2.Stream[IO, String] = {
@@ -43,8 +48,17 @@ object Solution4 extends IOApp {
       .filter(_.nonEmpty)
   }
 
-  /** Is a section contained in the other or */
-  private def countOverlaps(input: fs2.Stream[IO, String]): IO[Int] = {
+  private def countFullyContained(input: fs2.Stream[IO, String]): IO[Int] = {
+    input
+      .map(Sections.fromTwoElves)
+      .foldMap(sections => countContained(sections._1, sections._2))
+      .compile
+      .onlyOrError
+  }
+
+  private def countOverlappingSections(
+      input: fs2.Stream[IO, String]
+  ): IO[Int] = {
     input
       .map(Sections.fromTwoElves)
       .foldMap(sections => countOverlap(sections._1, sections._2))
@@ -52,22 +66,31 @@ object Solution4 extends IOApp {
       .onlyOrError
   }
 
-  private def countOverlap(
+  private def countOverlap(s1: Sections.Sections, s2: Sections.Sections): Int =
+    if (s1.overlaps(s2)) 1 else 0
+
+  private def countContained(
       s1: Sections.Sections,
       s2: Sections.Sections
   ): Int = {
     if (Sections.containsOneOrAnother(s1, s2)) 1 else 0
   }
 
-  def run(filepath: String): IO[Int] = {
+  def countFullyContainedSections(filepath: String): IO[Int] = {
     val input = readInput(filepath)
-    countOverlaps(input)
+    countFullyContained(input)
+      .flatTap(IO.println)
+  }
+
+  def countOverlappedSections(filepath: String): IO[Int] = {
+    val input = readInput(filepath)
+    countOverlappingSections(input)
       .flatTap(IO.println)
   }
 
   override def run(args: List[String]): IO[ExitCode] = {
     val filePath = "./src/main/resources/input-4.txt"
-    run(filePath).as(ExitCode.Success)
+    countOverlappedSections(filePath).as(ExitCode.Success)
   }
 
 }
