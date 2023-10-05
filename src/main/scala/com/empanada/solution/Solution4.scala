@@ -79,18 +79,18 @@ object Solution4 extends IOApp {
   def countFullyContainedSections(filepath: String): IO[Int] = {
     val input = readInput(filepath)
     countFullyContained(input)
-      .flatTap(IO.println)
   }
 
   def countOverlappedSections(filepath: String): IO[Int] = {
     val input = readInput(filepath)
     countOverlappingSections(input)
-      .flatTap(IO.println)
   }
 
   override def run(args: List[String]): IO[ExitCode] = {
     val filePath = "./src/main/resources/input-4.txt"
-    countOverlappedSections(filePath).as(ExitCode.Success)
+    countOverlappedSections(filePath)
+      .flatTap(IO.println)
+      .as(ExitCode.Success)
   }
 
 }
